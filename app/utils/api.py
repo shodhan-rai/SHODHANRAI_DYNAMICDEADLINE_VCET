@@ -38,7 +38,7 @@ def extend_due_dates_in_progress(section_id, excluded_task_id=None):
     
     if response.status_code == 200:
         tasks = response.json()['data']
-        print(f"Extending due dates for {len(tasks)} tasks in 'In Progress' section")
+        print(f"Extending due dates for {len(tasks)-1} tasks in 'In Progress' section")
         
         for task in tasks:
             task_id = task['gid']
