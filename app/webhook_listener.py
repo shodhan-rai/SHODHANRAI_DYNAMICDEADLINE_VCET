@@ -1,8 +1,6 @@
 from flask import Flask, request, jsonify, make_response
-from utils.api import update_due_date, extend_due_dates_in_progress, get_task_details, get_tasks_in_section
-import json
+from utils.api import update_due_date, extend_due_dates_in_progress, get_task_details
 import os
-from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -40,7 +38,7 @@ def handle_webhook():
     if data is None:
         return jsonify({"error": "Invalid JSON"}), 400
 
-    # Handle task updates or other events
+    # Handle task updates
     if 'events' in data:
         for event in data['events']:
             action = event.get('action')
@@ -55,7 +53,7 @@ def handle_webhook():
                 parent.get('resource_type') == 'section' and
                 section_id == IN_PROGRESS_SECTION_ID):
                 
-                # Only process if we haven't handled this task move before
+                # Check if the high priority task was not processed previously 
                 if task_id not in processed_high_priority_moves:
                     # Fetch task details to get the priority
                     task_details = get_task_details(task_id)
@@ -67,13 +65,13 @@ def handle_webhook():
                                 if priority_name == "High":
                                     print(f"High-priority task {task_id} moved to 'In Progress' section")
                                     try:
-                                        # Mark this task as processed
+                                        # Mark the task as processed
                                         processed_high_priority_moves.add(task_id)
                                         extend_due_dates_in_progress(IN_PROGRESS_SECTION_ID, task_id)
                                     except Exception as e:
                                         print(f"Error extending due dates: {str(e)}")
 
-            # Handle priority changes (both for new and existing tasks)
+            # Handle priority changes
             if action == 'changed' and task.get('resource_type') == 'task':
                 change_field = event.get('change', {}).get('field')
                 if change_field == 'custom_fields':
@@ -85,8 +83,7 @@ def handle_webhook():
                             task_details = get_task_details(task_id)
                             due_date = task_details.get('due_on')
                             
-                            # Only update if due date was automatically set (check due_date_source if possible)
-                            # or if there's no due date
+                            # Only update if due date was automatically set or if there's no due date
                             if not due_date:
                                 print(f"Setting due date for task {task_id} after priority change to: {priority}")
                                 update_due_date(task_id, priority)
@@ -98,7 +95,7 @@ def handle_webhook():
                 task_details = get_task_details(task_id)
                 initial_due_date = task_details.get('due_on')
                 
-                # Only set due date if one hasn't been manually set
+                # Set due date if it was not set manually
                 if task_details.get('name') and not initial_due_date:
                     # Check custom fields for priority
                     if 'custom_fields' in task_details:
