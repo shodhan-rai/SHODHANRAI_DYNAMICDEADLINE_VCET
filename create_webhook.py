@@ -5,11 +5,11 @@ import os
 def create_webhook():
     project_id = os.getenv('ASANA_PROJECT_ID')
     url = f"{ASANA_API_URL}/webhooks"
-    # Note: Replace 'https://ccc6-27-111-75-204.ngrok-free.app/webhook' with your own ngrok URL
+    # Note: Replace '<your_ngrok_url>' with your own ngrok URL
     payload = {
         "data": {
             "resource": project_id,
-            "target": "https://ccc6-27-111-75-204.ngrok-free.app/webhook"
+            "target": "<your_ngrok_url>/webhook"
         }
     }
     response = requests.post(url, json=payload, headers=HEADERS)

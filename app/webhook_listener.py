@@ -8,16 +8,20 @@ load_dotenv()
 app = Flask(__name__)
 
 # Mapping of custom field enum value IDs to priority levels
+#Replace <low_priority_key_id>, <medium_priority_key_id>and <high_priority_key_id> with actual key_id
 PRIORITY_MAPPING = {
-    "1208780230046416": "Low",    
-    "1208780230046417": "Medium",
-    "1208780230046418": "High"   
+    "<low_priority_key_id>": "Low",    
+    "<medium_priority_key_id>": "Medium",
+    "<high_priority_key_id>": "High"   
 }
 
 IN_PROGRESS_SECTION_ID = os.getenv('IN_PROGRESS_SECTION_ID')
 
 # Track which high priority tasks have already triggered extensions
 processed_high_priority_moves = set()
+
+# Track which tasks in In Progress section have been extended
+extended_tasks = set()
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
@@ -67,7 +71,9 @@ def handle_webhook():
                                     try:
                                         # Mark the task as processed
                                         processed_high_priority_moves.add(task_id)
-                                        extend_due_dates_in_progress(IN_PROGRESS_SECTION_ID, task_id)
+                                        
+                                        # Extend due dates only for tasks that haven't been extended before
+                                        extend_due_dates_in_progress(IN_PROGRESS_SECTION_ID, task_id, extended_tasks)
                                     except Exception as e:
                                         print(f"Error extending due dates: {str(e)}")
 
