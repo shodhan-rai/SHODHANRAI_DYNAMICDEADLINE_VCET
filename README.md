@@ -142,7 +142,7 @@ Replace `YOUR_ACCESS_TOKEN` and `YOUR_PROJECT_ID` with actual values in the belo
 
  1. Make sure that `.env` file has correct info and it has been saved in the root directory.
  2. Make sure that you have set the system variables correctly.
- 3. Make sure that you have updated the Priority Level IDs in `webhook_listener.py`
+ 3. Make sure that you have updated the Priority Level IDs in `webhook_listener.py` line 12.
  4. Make sure that ngrok is configured correctly
 
    
