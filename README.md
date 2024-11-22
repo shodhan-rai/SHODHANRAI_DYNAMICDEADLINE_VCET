@@ -171,6 +171,6 @@ Replace `YOUR_ACCESS_TOKEN` and `YOUR_PROJECT_ID` with actual values in the belo
 ## Demonstration Video
 [Watch the Demonstration Video](https://drive.google.com/file/d/1dDF4E5WaaF3DHrYQinRiubClwK1uCs-C/view?usp=sharing)
 
-### For example inputs refer EXAMPLES.md
+### For example inputs refer [EXAMPLES.md](https://github.com/shodhan-rai/SHODHANRAI_DYNAMICDEADLINE_VCET/blob/main/EXAMPLES.md)
 
-### For Working Info refer WORKING_INFO.md
+### For Working Info refer [WORKING_INFO.md](https://github.com/shodhan-rai/SHODHANRAI_DYNAMICDEADLINE_VCET/blob/main/WORKING_INFO.md)
