@@ -8,7 +8,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Mapping of custom field enum value IDs to priority levels
-#Replace <low_priority_key_id>, <medium_priority_key_id>and <high_priority_key_id> with actual key_id
+# Replace <low_priority_key_id>, <medium_priority_key_id>and <high_priority_key_id> with actual key_id
 PRIORITY_MAPPING = {
     "<low_priority_key_id>": "Low",    
     "<medium_priority_key_id>": "Medium",
@@ -17,11 +17,14 @@ PRIORITY_MAPPING = {
 
 IN_PROGRESS_SECTION_ID = os.getenv('IN_PROGRESS_SECTION_ID')
 
-# Track which high priority tasks have already triggered extensions
+# Tracking triggered extensions
 processed_high_priority_moves = set()
 
-# Track which tasks in In Progress section have been extended
+# Tracking extended tasks
 extended_tasks = set()
+
+# Track tasks with automatically set due dates
+auto_due_date_tasks = set()
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
@@ -57,9 +60,7 @@ def handle_webhook():
                 parent.get('resource_type') == 'section' and
                 section_id == IN_PROGRESS_SECTION_ID):
                 
-                # Check if the high priority task was not processed previously 
                 if task_id not in processed_high_priority_moves:
-                    # Fetch task details to get the priority
                     task_details = get_task_details(task_id)
                     
                     if 'custom_fields' in task_details:
@@ -69,10 +70,7 @@ def handle_webhook():
                                 if priority_name == "High":
                                     print(f"High-priority task {task_id} moved to 'In Progress' section")
                                     try:
-                                        # Mark the task as processed
                                         processed_high_priority_moves.add(task_id)
-                                        
-                                        # Extend due dates only for tasks that haven't been extended before
                                         extend_due_dates_in_progress(IN_PROGRESS_SECTION_ID, task_id, extended_tasks)
                                     except Exception as e:
                                         print(f"Error extending due dates: {str(e)}")
@@ -89,10 +87,11 @@ def handle_webhook():
                             task_details = get_task_details(task_id)
                             due_date = task_details.get('due_on')
                             
-                            # Only update if due date was automatically set or if there's no due date
-                            if not due_date:
+                            # Update due date if it was automatically set or if there's no due date
+                            if not due_date or task_id in auto_due_date_tasks:
                                 print(f"Setting due date for task {task_id} after priority change to: {priority}")
                                 update_due_date(task_id, priority)
+                                auto_due_date_tasks.add(task_id)
                             else:
                                 print(f"Keeping existing due date {due_date} for task {task_id} despite priority change to {priority}")
 
@@ -110,6 +109,8 @@ def handle_webhook():
                                 priority = PRIORITY_MAPPING[field['enum_value']['gid']]
                                 print(f"Setting initial due date for new task {task_id} with priority: {priority}")
                                 update_due_date(task_id, priority)
+                                # Track that this task's due date was automatically set
+                                auto_due_date_tasks.add(task_id)
                                 break
                 elif initial_due_date:
                     print(f"Keeping manually set due date {initial_due_date} for new task {task_id}")
