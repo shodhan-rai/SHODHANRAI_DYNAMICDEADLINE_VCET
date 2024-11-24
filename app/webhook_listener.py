@@ -1,9 +1,9 @@
+import os, sys
 from flask import Flask, request, jsonify, make_response
-from utils.api import update_due_date, extend_due_dates_in_progress, get_task_details, reduce_due_dates_in_progress
-import os
 from dotenv import load_dotenv
-
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 load_dotenv()
+from app.utils.api import update_due_date, extend_due_dates_in_progress, get_task_details, reduce_due_dates_in_progress
 
 app = Flask(__name__)
 
