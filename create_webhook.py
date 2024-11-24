@@ -9,7 +9,7 @@ def create_webhook():
     payload = {
         "data": {
             "resource": project_id,
-            "target": "<your_ngrok_url>/webhook"
+            "target": "https://ffa2-220-158-159-92.ngrok-free.app/webhook"
         }
     }
     response = requests.post(url, json=payload, headers=HEADERS)

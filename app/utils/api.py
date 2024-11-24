@@ -22,9 +22,9 @@ def create_session():
     """Create a requests session with retry strategy"""
     session = requests.Session()
     retry_strategy = Retry(
-        total=3,  # number of retries
-        backoff_factor=1,  
-        status_forcelist=[429, 500, 502, 503, 504]  # status codes to retry on
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504]
     )
     adapter = HTTPAdapter(max_retries=retry_strategy)
     session.mount("https://", adapter)
@@ -34,7 +34,6 @@ def create_session():
 session = create_session()
 
 def handle_rate_limit(func):
-    
     @wraps(func)
     def wrapper(*args, **kwargs):
         max_retries = 3
@@ -66,6 +65,60 @@ def api_request(method, url, **kwargs):
         raise
 
 @handle_rate_limit
+def extend_due_dates_in_progress(section_id, high_priority_task_id, task_extension_tracking):
+    """Extend due dates for tasks in the section that haven't been extended by any high priority task."""
+    url = f"{ASANA_API_URL}/sections/{section_id}/tasks"
+    extended_tasks = set()
+    
+    try:
+        response = api_request('get', url)
+        tasks = response.json()['data']
+        
+        for task in tasks:
+            task_id = task['gid']
+            
+            # Skip the high priority task itself and tasks that are already being tracked
+            if task_id == high_priority_task_id or task_id in task_extension_tracking:
+                continue
+            
+            # Initialize tracking for this task and extend it
+            task_extension_tracking[task_id] = {'extended_by': set()}
+            extend_due_date(task_id, 2)
+            task_extension_tracking[task_id]['extended_by'].add(high_priority_task_id)
+            extended_tasks.add(task_id)
+            logger.info(f"Task {task_id} extended by high priority task {high_priority_task_id}")
+            
+        return extended_tasks
+            
+    except Exception as e:
+        logger.error(f"Failed to extend due dates: {str(e)}")
+        raise
+
+@handle_rate_limit
+def reduce_due_dates_in_progress(section_id, high_priority_task_id, task_extension_tracking):
+    """Reduce due dates only for tasks that were extended by this specific high priority task."""
+    try:
+        for task_id, tracking_info in list(task_extension_tracking.items()):
+            if high_priority_task_id in tracking_info['extended_by']:
+                # Verify task is still in the section
+                task_details = get_task_details(task_id)
+                if task_details.get('memberships'):
+                    for membership in task_details['memberships']:
+                        if membership.get('section') and membership['section']['gid'] == section_id:
+                            reduce_due_date(task_id, 2)
+                            # Remove this high priority task from tracking
+                            tracking_info['extended_by'].remove(high_priority_task_id)
+                            # If no more high priority tasks are extending this task, remove it from tracking
+                            if not tracking_info['extended_by']:
+                                del task_extension_tracking[task_id]
+                            logger.info(f"Reduced due date for task {task_id} after high priority task {high_priority_task_id} moved")
+                            break
+                            
+    except Exception as e:
+        logger.error(f"Failed to reduce due dates: {str(e)}")
+        raise
+
+@handle_rate_limit
 def update_due_date(task_id, priority):
     """Update the due date of a task based on its priority."""
     due_date = calculate_due_date(priority)
@@ -77,7 +130,7 @@ def update_due_date(task_id, priority):
     return response.json()
 
 def calculate_due_date(priority):
-    """Function to Calculate due date based on priority level"""
+    """Calculate due date based on priority level"""
     today = datetime.today()
     if priority == "Low":
         due_date = today + timedelta(days=14)
@@ -89,33 +142,6 @@ def calculate_due_date(priority):
         due_date = today + timedelta(days=7)  # Default case
    
     return due_date.strftime("%Y-%m-%d")
-
-@handle_rate_limit
-def extend_due_dates_in_progress(section_id, excluded_task_id=None, extended_tasks_set=None):
-    """Extend due dates for all tasks in the given section except the excluded task."""
-    url = f"{ASANA_API_URL}/sections/{section_id}/tasks"
-    
-    try:
-        response = api_request('get', url)
-        tasks = response.json()['data']
-        logger.info(f"Extending due dates for tasks in 'In Progress' section")
-        
-        # Batch process tasks
-        for task in tasks:
-            task_id = task['gid']
-            
-            # Skip the task that triggered the extension and already extended tasks
-            if task_id == excluded_task_id or (extended_tasks_set is not None and task_id in extended_tasks_set):
-                continue
-            
-            # Extend due date and mark as extended
-            extend_due_date(task_id, 2)
-            if extended_tasks_set is not None:
-                extended_tasks_set.add(task_id)
-                
-    except Exception as e:
-        logger.error(f"Failed to extend due dates: {str(e)}")
-        raise
 
 @handle_rate_limit
 def extend_due_date(task_id, days):
@@ -143,6 +169,31 @@ def extend_due_date(task_id, days):
         raise
 
 @handle_rate_limit
+def reduce_due_date(task_id, days):
+    """Reduce the due date of a specific task by the given number of days."""
+    url = f"{ASANA_API_URL}/tasks/{task_id}"
+   
+    try:
+        # Get current task details
+        response = api_request('get', url)
+        task = response.json()['data']
+        current_due_date = task.get('due_on')
+   
+        if not current_due_date:
+            return
+   
+        # Calculate and set new due date
+        due_date = datetime.strptime(current_due_date, "%Y-%m-%d") - timedelta(days=days)
+        payload = {"data": {"due_on": due_date.strftime("%Y-%m-%d")}}
+   
+        response = api_request('put', url, json=payload)
+        logger.info(f"Reduced due date for task {task_id} by {days} days to {due_date.strftime('%Y-%m-%d')}")
+        
+    except Exception as e:
+        logger.error(f"Failed to reduce due date for task {task_id}: {str(e)}")
+        raise
+
+@handle_rate_limit
 def get_task_details(task_id):
     """Get detailed information about a specific task."""
     url = f"{ASANA_API_URL}/tasks/{task_id}"
@@ -152,14 +203,3 @@ def get_task_details(task_id):
     except Exception:
         logger.error(f"Failed to get task details for task {task_id}")
         return {}
-
-@handle_rate_limit
-def get_tasks_in_section(section_id):
-    """Get all tasks in a specific section."""
-    url = f"{ASANA_API_URL}/sections/{section_id}/tasks"
-    try:
-        response = api_request('get', url)
-        return response.json()['data']
-    except Exception:
-        logger.error(f"Failed to get tasks in section {section_id}")
-        return []

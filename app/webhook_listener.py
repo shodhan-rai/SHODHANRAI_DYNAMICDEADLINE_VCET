@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, make_response
-from utils.api import update_due_date, extend_due_dates_in_progress, get_task_details
+from utils.api import update_due_date, extend_due_dates_in_progress, get_task_details, reduce_due_dates_in_progress
 import os
 from dotenv import load_dotenv
 
@@ -8,20 +8,17 @@ load_dotenv()
 app = Flask(__name__)
 
 # Mapping of custom field enum value IDs to priority levels
-# Replace <low_priority_key_id>, <medium_priority_key_id>and <high_priority_key_id> with actual key_id
 PRIORITY_MAPPING = {
-    "<low_priority_key_id>": "Low",    
-    "<medium_priority_key_id>": "Medium",
-    "<high_priority_key_id>": "High"   
+    "1208780230046416": "Low",    
+    "1208780230046417": "Medium",
+    "1208780230046418": "High"   
 }
 
 IN_PROGRESS_SECTION_ID = os.getenv('IN_PROGRESS_SECTION_ID')
 
-# Tracking triggered extensions
-processed_high_priority_moves = set()
-
-# Tracking extended tasks
-extended_tasks = set()
+# Tracking which high priority tasks have extended which tasks
+# Format: {task_id: {'extended_by': set(high_priority_task_ids)}}
+task_extension_tracking = {}
 
 # Track tasks with automatically set due dates
 auto_due_date_tasks = set()
@@ -36,7 +33,6 @@ def handle_webhook():
         response.headers["Content-Type"] = "text/plain"
         return response
 
-    # Parse JSON payload
     try:
         data = request.get_json(force=True)
     except Exception as e:
@@ -45,7 +41,6 @@ def handle_webhook():
     if data is None:
         return jsonify({"error": "Invalid JSON"}), 400
 
-    # Handle task updates
     if 'events' in data:
         for event in data['events']:
             action = event.get('action')
@@ -60,20 +55,45 @@ def handle_webhook():
                 parent.get('resource_type') == 'section' and
                 section_id == IN_PROGRESS_SECTION_ID):
                 
-                if task_id not in processed_high_priority_moves:
-                    task_details = get_task_details(task_id)
-                    
-                    if 'custom_fields' in task_details:
-                        for field in task_details['custom_fields']:
-                            if field.get('enum_value') and field['enum_value'].get('gid') in PRIORITY_MAPPING:
-                                priority_name = PRIORITY_MAPPING[field['enum_value']['gid']]
-                                if priority_name == "High":
-                                    print(f"High-priority task {task_id} moved to 'In Progress' section")
-                                    try:
-                                        processed_high_priority_moves.add(task_id)
-                                        extend_due_dates_in_progress(IN_PROGRESS_SECTION_ID, task_id, extended_tasks)
-                                    except Exception as e:
-                                        print(f"Error extending due dates: {str(e)}")
+                task_details = get_task_details(task_id)
+                
+                if 'custom_fields' in task_details:
+                    for field in task_details['custom_fields']:
+                        if field.get('enum_value') and field['enum_value'].get('gid') in PRIORITY_MAPPING:
+                            priority_name = PRIORITY_MAPPING[field['enum_value']['gid']]
+                            if priority_name == "High":
+                                print(f"High-priority task {task_id} moved to 'In Progress' section")
+                                try:
+                                    extend_due_dates_in_progress(
+                                        IN_PROGRESS_SECTION_ID, 
+                                        task_id,
+                                        task_extension_tracking
+                                    )
+                                except Exception as e:
+                                    print(f"Error extending due dates: {str(e)}")
+
+            # Handle task movement out of "In Progress" section
+            elif (action == 'removed' and 
+                  task.get('resource_type') == 'task' and 
+                  parent.get('resource_type') == 'section' and
+                  section_id == IN_PROGRESS_SECTION_ID):
+                
+                task_details = get_task_details(task_id)
+                if 'custom_fields' in task_details:
+                    for field in task_details['custom_fields']:
+                        if field.get('enum_value') and field['enum_value'].get('gid') in PRIORITY_MAPPING:
+                            priority_name = PRIORITY_MAPPING[field['enum_value']['gid']]
+                            if priority_name == "High":
+                                print(f"High-priority task {task_id} moved out of 'In Progress' section")
+                                try:
+                                    # Only reduce due dates for tasks that were extended by this specific task
+                                    reduce_due_dates_in_progress(
+                                        IN_PROGRESS_SECTION_ID,
+                                        task_id,
+                                        task_extension_tracking
+                                    )
+                                except Exception as e:
+                                    print(f"Error reducing due dates: {str(e)}")
 
             # Handle priority changes
             if action == 'changed' and task.get('resource_type') == 'task':
@@ -87,7 +107,6 @@ def handle_webhook():
                             task_details = get_task_details(task_id)
                             due_date = task_details.get('due_on')
                             
-                            # Update due date if it was automatically set or if there's no due date
                             if not due_date or task_id in auto_due_date_tasks:
                                 print(f"Setting due date for task {task_id} after priority change to: {priority}")
                                 update_due_date(task_id, priority)
@@ -100,21 +119,19 @@ def handle_webhook():
                 task_details = get_task_details(task_id)
                 initial_due_date = task_details.get('due_on')
                 
-                # Set due date if it was not set manually
                 if task_details.get('name') and not initial_due_date:
-                    # Check custom fields for priority
                     if 'custom_fields' in task_details:
                         for field in task_details['custom_fields']:
                             if field.get('enum_value') and field['enum_value'].get('gid') in PRIORITY_MAPPING:
                                 priority = PRIORITY_MAPPING[field['enum_value']['gid']]
                                 print(f"Setting initial due date for new task {task_id} with priority: {priority}")
                                 update_due_date(task_id, priority)
-                                # Track that this task's due date was automatically set
                                 auto_due_date_tasks.add(task_id)
                                 break
                 elif initial_due_date:
                     print(f"Keeping manually set due date {initial_due_date} for new task {task_id}")
 
+    
     return jsonify({"status": "success"}), 200
 
 if __name__ == '__main__':
