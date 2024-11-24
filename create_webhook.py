@@ -1,5 +1,5 @@
 import requests
-from config.config import ASANA_API_URL, HEADERS
+from config.config import ASANA_API_URL, HEADERS, WEBHOOK_URL
 import os
 
 def create_webhook():
@@ -9,7 +9,7 @@ def create_webhook():
     payload = {
         "data": {
             "resource": project_id,
-            "target": "https://ffa2-220-158-159-92.ngrok-free.app/webhook"
+            "target": f"{WEBHOOK_URL}/webhook"
         }
     }
     response = requests.post(url, json=payload, headers=HEADERS)
