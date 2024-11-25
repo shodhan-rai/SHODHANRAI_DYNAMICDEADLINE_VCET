@@ -9,6 +9,8 @@ This project automates the assignment of due dates to tasks based on priority an
   - Mid: 7 days from the present date.
   - High: 2 days from the present date.
 - Automatically extends due dates for all tasks in the "In Progress" section by 2 days when a high-priority task is moved there.
+- Reduces due dates for tasks in 'In Progress' section by 2 days when high priority task is moved out of 'In Progress' section.
+- Prevents redundant due date extensions and due date reductions.
 
 ## Prerequisites
 - Python 3.11 or above
@@ -40,6 +42,7 @@ Create a folder called `Dynamic_Deadline` in your System, get inside that folder
 - `api.py`: Contains functions for interacting with the Asana API.
 - `create_webhook.py`: Script to create webhooks in Asana.
 - `config.py`: Configuration file for API settings.
+- `gunicorn_config.py`: Configuration file for deployment in cloud
 - `requirements.txt`: Lists project dependencies.
 
 ## Configuration
@@ -105,6 +108,8 @@ Replace `YOUR_ACCESS_TOKEN` and `YOUR_PROJECT_ID` with actual values in the belo
    ASANA_ACCESS_TOKEN=<your_personal_access_token>
    ASANA_PROJECT_ID=<your_project_id>
    IN_PROGRESS_SECTION_ID=<your_in_progress_section_id>
+   ASANA_API_URL=https://app.asana.com/api/1.0
+   WEBHOOK_URL=<your_ngrok_url>
    ```
 
 2. Replace `<your_personal_access_token>`, `<your_project_id>` and `<your_in_progress_section_id>` with the correct values and save the file.
@@ -155,7 +160,7 @@ Replace `YOUR_ACCESS_TOKEN` and `YOUR_PROJECT_ID` with actual values in the belo
    ```sh
    ngrok http 5000
    ```
-3. Running the above command will give you a public url, copy that url and replace it in the place of `<your-ngrok-url>` at line 12 of `create_webhook.py` and save the file.
+3. Running the above command will give you a public url, copy that url and replace it in the place of `<your-ngrok-url>` at line 5 of `.env` and save the file.
 
 4. In a new terminal, create the webhook:
    ```sh
@@ -167,9 +172,13 @@ Replace `YOUR_ACCESS_TOKEN` and `YOUR_PROJECT_ID` with actual values in the belo
 2. Assign different priority levels to tasks
 3. Move tasks to the "In Progress" section
 4. Verify that due dates are being set and updated according to the rules
+5. Remove the high priority task from In Progress section
+6. Verify that due dates of tasks in 'In Progress' section gets reduced
+7. Verify that no duplicate due date extensions and reductions are being made
 
-## Demonstration Video
-[Watch the Demonstration Video](https://drive.google.com/file/d/1dDF4E5WaaF3DHrYQinRiubClwK1uCs-C/view?usp=sharing)
+
+## Demonstration video for updated requirements
+[Watch the Demonstration Video](https://drive.google.com/file/d/156TLunMzLU2VpGjikhQOSl9PeGfrdUqr/view?usp=sharing)
 
 ### For example inputs refer [EXAMPLES.md](https://github.com/shodhan-rai/SHODHANRAI_DYNAMICDEADLINE_VCET/blob/main/EXAMPLES.md)
 
