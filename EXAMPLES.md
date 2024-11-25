@@ -30,8 +30,8 @@ The Due dates of Task 3 and Task 4 gets extended by 2 days
  
 - Final State of 'In Progress' Section:
   - Task 1(High Priority), Due Date: 2024-11-27
-  - Task 3(Mid Priority), Due Date: 2024-12-02
-  - Task 4(Low Priority), Due Date: 2024-12-09
+  - Task 3(Mid Priority), Due Date: 2024-12-04
+  - Task 4(Low Priority), Due Date: 2024-12-11
  
 
 ## Reducing Due dates in 'In Progress' Section
@@ -40,8 +40,8 @@ The Due dates of Task 3 and Task 4 gets extended by 2 days
 There are 3 tasks in 'In Progress' section
 - Initial State:
   - Task 1(High Priority), Due Date: 2024-11-27
-  - Task 3(Mid Priority), Due Date: 2024-12-02
-  - Task 4(Low Priority), Due Date: 2024-12-09
+  - Task 3(Mid Priority), Due Date: 2024-12-04
+  - Task 4(Low Priority), Due Date: 2024-12-11
  
 - Action:
   - Move Task1(High Priority) out of 'In Progress' section
