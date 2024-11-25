@@ -183,3 +183,6 @@ Replace `YOUR_ACCESS_TOKEN` and `YOUR_PROJECT_ID` with actual values in the belo
 ### For example inputs refer [EXAMPLES.md](https://github.com/shodhan-rai/SHODHANRAI_DYNAMICDEADLINE_VCET/blob/main/EXAMPLES.md)
 
 ### For Working Info refer [WORKING_INFO.md](https://github.com/shodhan-rai/SHODHANRAI_DYNAMICDEADLINE_VCET/blob/main/WORKING_INFO.md)
+
+### To see the working in real time, I have granted access to the asana project where you can verify the working
+- Check your email and accept the invite
