@@ -13,6 +13,8 @@
     - Low priority: Present date + 14 days.
   - Due Date Extension:
     - When a High-priority task is moved to In Progress, extend the due dates of other tasks in In Progress by 2 days.
+  - Due Date Reduction:
+    - When a High-priority task gets moved out of 'In Progress' section, due dates of tasks present in 'In Progress' section gets reduced by 2 days.
 
 ### 3. Tools and Platform
   - Used Asana API to integrate local logic with Asana platform.
@@ -56,3 +58,5 @@ The project includes the following files:
   - Creation of the webhook for monitoring changes in Asana.
 - `config.py`:
   - Configuration file for API settings.
+- `gunicorn_config.py`:
+  - Configuration file for Cloud Deployment.
