@@ -66,7 +66,7 @@ def api_request(method, url, **kwargs):
 
 @handle_rate_limit
 def extend_due_dates_in_progress(section_id, high_priority_task_id, task_extension_tracking):
-    """Extend due dates for tasks in the section that haven't been extended by any high priority task."""
+    """Extend due dates for ALL tasks in the section when a high priority task enters."""
     url = f"{ASANA_API_URL}/sections/{section_id}/tasks"
     extended_tasks = set()
     
@@ -77,12 +77,12 @@ def extend_due_dates_in_progress(section_id, high_priority_task_id, task_extensi
         for task in tasks:
             task_id = task['gid']
             
-            # Skip the high priority task itself and tasks that are already being tracked
-            if task_id == high_priority_task_id or task_id in task_extension_tracking:
+            if task_id == high_priority_task_id:
                 continue
             
-            # Initialize tracking for this task and extend it
-            task_extension_tracking[task_id] = {'extended_by': set()}
+            if task_id not in task_extension_tracking:
+                task_extension_tracking[task_id] = {'extended_by': set()}
+            
             extend_due_date(task_id, 2)
             task_extension_tracking[task_id]['extended_by'].add(high_priority_task_id)
             extended_tasks.add(task_id)
@@ -96,19 +96,16 @@ def extend_due_dates_in_progress(section_id, high_priority_task_id, task_extensi
 
 @handle_rate_limit
 def reduce_due_dates_in_progress(section_id, high_priority_task_id, task_extension_tracking):
-    """Reduce due dates only for tasks that were extended by this specific high priority task."""
+    """Reduce due dates for all tasks that were extended by this specific high priority task."""
     try:
         for task_id, tracking_info in list(task_extension_tracking.items()):
             if high_priority_task_id in tracking_info['extended_by']:
-                # Verify task is still in the section
                 task_details = get_task_details(task_id)
                 if task_details.get('memberships'):
                     for membership in task_details['memberships']:
                         if membership.get('section') and membership['section']['gid'] == section_id:
                             reduce_due_date(task_id, 2)
-                            # Remove this high priority task from tracking
                             tracking_info['extended_by'].remove(high_priority_task_id)
-                            # If no more high priority tasks are extending this task, remove it from tracking
                             if not tracking_info['extended_by']:
                                 del task_extension_tracking[task_id]
                             logger.info(f"Reduced due date for task {task_id} after high priority task {high_priority_task_id} moved")
